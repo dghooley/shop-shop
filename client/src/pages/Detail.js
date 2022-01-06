@@ -15,6 +15,8 @@ import {
 
 import Cart from '../components/Cart';
 
+import { idbPromise } from "../utils/helpers";
+
 function Detail() {
   const [state, dispatch] = useStoreContext();
   const { id } = useParams();
@@ -51,15 +53,30 @@ function Detail() {
 
   // HOOK checks to see if there's data in the product's array, if there is, we figure out which is the one we want to display; if not we use product data returned from the useQuery() hook to set the product state to the global state object
   useEffect(() => {
+    // already in global store
     if (products.length) {
       setCurrentProduct(products.find(product => product._id === id));
-    } else if (data) {
+    } // retrieved from server
+      else if (data) {
       dispatch({
         type: UPDATE_PRODUCTS,
         products: data.products
       });
+
+      data.products.forEach((product) => {
+        idbPromise('products', 'put', product);
+      });
     }
-  }, [products, data, dispatch, id]);
+    // get cache from idb
+    else if (!loading) {
+      idbPromise('products', 'get').then((indexedProducts) => {
+        dispatch({
+          type: UPDATE_PRODUCTS,
+          products: indexedProducts
+        });
+      });
+    }
+  }, [products, data, loading, dispatch, id]);
   
   return (
     <>
